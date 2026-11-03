@@ -76,6 +76,7 @@ def classify(description):
     return "Other"
 
 uploaded = st.file_uploader("Upload bank statement", type=["csv", "xlsx", "xls"])
+df = None  # Ensure the variable exists even if loading fails.
 try:
     if uploaded is not None:
         raw = pd.read_csv(uploaded) if uploaded.name.lower().endswith(".csv") else pd.read_excel(uploaded)
@@ -84,6 +85,10 @@ try:
     df = normalize_columns(raw)
 except Exception as exc:
     st.error(f"Unable to load data: {exc}")
+    st.stop()
+
+if df is None:
+    st.error("Data could not be initialized. Please upload a valid CSV or Excel file.")
     st.stop()
 
 if df.empty:
