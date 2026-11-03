@@ -76,7 +76,7 @@ def classify(description):
     return "Other"
 
 uploaded = st.file_uploader("Upload bank statement", type=["csv", "xlsx", "xls"])
-df = None  # Ensure the variable exists even if loading fails.
+df = None
 try:
     if uploaded is not None:
         raw = pd.read_csv(uploaded) if uploaded.name.lower().endswith(".csv") else pd.read_excel(uploaded)
@@ -86,13 +86,10 @@ try:
 except Exception as exc:
     st.error(f"Unable to load data: {exc}")
     st.stop()
-    raise RuntimeError(f"Unable to load data: {exc}")
 
 if df is None:
     st.error("Data could not be initialized. Please upload a valid CSV or Excel file.")
     st.stop()
-    raise RuntimeError("Data could not be initialized.")
-
 if df.empty:
     st.warning("The file has no valid dated transactions.")
     st.stop()
@@ -108,12 +105,14 @@ with st.sidebar:
 
 if isinstance(date_range, (tuple, list)) and len(date_range) == 2:
     start_date, end_date = date_range
+    if start_date > end_date:
+        st.warning("Start date must be on or before end date.")
+        st.stop()
     filtered = df[(df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)]
 elif isinstance(date_range, (tuple, list)) and len(date_range) == 1:
     selected_date = date_range[0]
     filtered = df[df["date"].dt.date == selected_date]
 elif hasattr(date_range, "year") and hasattr(date_range, "month") and hasattr(date_range, "day"):
-    # Streamlit may return a single date when the user selects one day in range mode.
     filtered = df[df["date"].dt.date == date_range]
 else:
     filtered = df.copy()
@@ -172,9 +171,20 @@ with c2:
     category_totals = filtered.groupby("category")["debit"].sum().sort_values(ascending=False)
     category_totals = category_totals[category_totals > 0]
     if not category_totals.empty:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(category_totals, labels=category_totals.index, autopct="%1.1f%%")
-        ax.set_title("Expense distribution")
+        # Match the dark Streamlit dashboard instead of Matplotlib's white canvas.
+        fig, ax = plt.subplots(figsize=(6, 4), facecolor="#0e1117")
+        ax.set_facecolor("#0e1117")
+        wedges, texts, autotexts = ax.pie(
+            category_totals,
+            labels=category_totals.index,
+            autopct="%1.1f%%",
+            textprops={"color": "#f2f2f2", "fontsize": 10},
+            wedgeprops={"edgecolor": "#0e1117", "linewidth": 1.2},
+        )
+        for autotext in autotexts:
+            autotext.set_color("#ffffff")
+            autotext.set_fontweight("bold")
+        ax.set_title("Expense distribution", color="#f2f2f2", pad=12)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
     else:
@@ -183,7 +193,6 @@ with c2:
 st.subheader("Next-Month Expense Estimate")
 monthly_series = filtered.set_index("date").resample("MS")["debit"].sum()
 if len(monthly_series) >= 3:
-    # Robust baseline: median of positive expense months in the latest 6 calendar months.
     recent = monthly_series.tail(6)
     positive_months = recent[recent > 0]
     if not positive_months.empty:
@@ -192,7 +201,7 @@ if len(monthly_series) >= 3:
         st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
         st.caption("Estimate uses the median of recent non-zero expense months; irregular spending may make it inaccurate. Not financial advice.")
     else:
-        st.info("No positive expenses in the latest 6 calendar months to estimate from.")
+        st.info("No positive expenses in the latest 6 calendar months to estimate from")
 else:
     st.info("At least 3 calendar months of transactions are needed for this baseline estimate.")
 
