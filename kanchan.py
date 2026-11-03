@@ -26,7 +26,7 @@ def clean_transactions(data):
     missing = {"date", "debit", "credit"} - set(data.columns)
     if missing:
         raise ValueError("Missing required columns: " + ", ".join(sorted(missing)))
-    data["date"] = pd.to_datetime(data["date"], errors="coerce", dayfirst=True)
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
     data["debit"] = pd.to_numeric(data["debit"], errors="coerce").fillna(0)
     data["credit"] = pd.to_numeric(data["credit"], errors="coerce").fillna(0)
     data = data.dropna(subset=["date"])
