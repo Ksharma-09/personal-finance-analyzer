@@ -95,6 +95,9 @@ with st.sidebar:
 if isinstance(date_range, (tuple, list)) and len(date_range) == 2:
     start_date, end_date = date_range
     filtered = df[(df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)]
+elif isinstance(date_range, (tuple, list)) and len(date_range) == 1:
+    selected_date = date_range[0]
+    filtered = df[df["date"].dt.date == selected_date]
 else:
     filtered = df.copy()
 # Category selection should filter expenses, not remove income transactions.
@@ -166,7 +169,7 @@ if len(monthly_series) >= 3:
     x = np.arange(len(monthly_series)).reshape(-1, 1)
     y = monthly_series.to_numpy(dtype=float)
     model = LinearRegression().fit(x, y)
-    estimate = max(0.0, float(model.predict(np.array([[len(monthly_series)]])[0]))
+    estimate = max(0.0, float(model.predict(np.array([[len(monthly_series)]]))[0]))
     next_period = monthly_series.index[-1] + pd.offsets.MonthBegin(1)
     st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
     st.caption("Baseline linear trend only; it is not financial advice and may be inaccurate.")
