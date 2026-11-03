@@ -1,0 +1,21 @@
+name: Python project checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install streamlit pandas numpy matplotlib reportlab openpyxl xlrd
+      - name: Compile Python files
+        run: python -m compileall -q .
+      - name: Smoke-test sample CSV
+        run: python -c "import pandas as pd; d=pd.read_csv('student.csv'); assert len(d)>0; print('CSV OK:',len(d),'rows')"
+      - name: Check Streamlit import
+        run: python -c "import streamlit; print('Streamlit OK',streamlit.__version__)"
