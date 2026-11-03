@@ -46,3 +46,21 @@ def test_summarize_totals_and_monthly():
     assert result["net_savings"] == 400
     assert len(result["monthly"]) == 1
     assert result["monthly"].iloc[0]["savings"] == 400
+
+
+def test_load_transactions_rejects_unsupported_file_type():
+    with pytest.raises(ValueError, match="Supported file formats"):
+        load_transactions("statement.pdf")
+
+
+def test_summarize_handles_income_only():
+    data = pd.DataFrame({
+        "Date": ["2025-04-10"],
+        "Credit": [1200],
+        "Debit": [0],
+        "Description": ["Salary"],
+    })
+    result = summarize(data)
+    assert result["total_income"] == 1200
+    assert result["total_expenses"] == 0
+    assert result["net_savings"] == 1200
