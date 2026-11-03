@@ -1,74 +1,52 @@
-# Personal Finance Analyzer 💰
-A Python-based Personal Finance Analytics Dashboard built with Streamlit to track income, expenses, savings, and budgets. Features interactive data visualizations, spending pattern analysis, budget monitoring, monthly expense forecasting with historical evaluation, and CSV/PDF report generation for data-driven financial management.
+# 💰 Personal Finance Analyzer
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-red)](https://streamlit.io/)
+[![Tests](https://img.shields.io/badge/Tests-pytest-brightgreen)](https://pytest.org/)
+
+A personal finance analytics dashboard built with Python and Streamlit. Upload a bank statement, explore income and spending patterns, review savings and budgets, and export cleaned data and reports.
 
 ## Features
-- Upload bank statements as **CSV, XLSX, or XLS**
-- Summary metrics: income, expenses, net savings, and savings rate
-- Monthly income-versus-expense chart
-- Monthly expense trends and expense grouping by description
-- Simple next-month expense estimate when enough monthly history exists
+- Import bank statements in CSV, XLSX, or XLS formats
+- Summary metrics for income, expenses, net savings, and savings rate
+- Monthly income-versus-expense and expense trend visualizations
+- Expense grouping and category insights
 - Monthly budget comparison
+- Basic next-month expense baseline with historical MAE evaluation when enough monthly history is available
 - Cleaned transaction table and CSV download
-- Reusable data-cleaning, categorization, summary, and chart functions in `kanchan.py`
+- PDF report generation
 
-## Built with
-Python · Streamlit · Pandas · NumPy · Matplotlib · scikit-learn
+## Tech stack
+Python · Streamlit · Pandas · NumPy · Matplotlib · scikit-learn · OpenPyXL · xlrd · pytest
 
 ## Run locally
+Python 3.10 or 3.11 is recommended.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Ksharma-09/personal-finance-analyzer.git
-   cd personal-finance-analyzer
-   ```
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
 
-2. (Recommended) Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   ```
-   Activate on Windows:
-   ```bash
-   .venv\Scripts\activate
-   ```
-   Activate on macOS/Linux:
-   ```bash
-   source .venv/bin/activate
-   ```
+python -m pip install -r requirements.txt
+streamlit run kanchan2.py
+```
 
-3. Install packages:
-   ```bash
-   pip install streamlit pandas numpy matplotlib scikit-learn openpyxl xlrd
-   ```
+## Input data
+The uploaded statement should include:
+- `Date`: transaction date
+- `Debit`: expense/withdrawal amount (use 0 if absent)
+- `Credit`: income/deposit amount (use 0 if absent)
+- `Description` (optional): transaction narration for grouping
 
-4. Launch:
-   ```bash
-   streamlit run kanchan2.py
-   ```
+Common alternative column names are supported by the data-cleaning pipeline.
 
-## Input file format
+## Validation
+GitHub Actions runs the pytest suite, compiles Python files, checks Streamlit import, and smoke-tests the included sample CSV.
 
-Your statement should contain these columns (case-insensitive; common alternate names are supported):
-
-| Column | Required? | Description |
-|---|---|---|
-| Date | Yes | Transaction date |
-| Debit | Yes | Expense/withdrawal; use 0 when absent |
-| Credit | Yes | Income/deposit; use 0 when absent |
-| Description | No | Transaction narration used for grouping |
-
-## Repository files
-- `kanchan2.py` — Streamlit dashboard
-- `kanchan.py` — reusable transaction cleaning, summaries, categories, and chart helpers
-- `student.csv` — sample data, if included
-
-## Limitations & privacy
-- Expense categories use simple keyword rules; some transactions may be labeled “other.”
-- The prediction is a basic trend estimate and can be unreliable with limited history. It is not financial advice.
-- Budget status is calculated for the latest month in the uploaded data.
-- Email alerts are currently disabled. **Never commit passwords, app passwords, API keys, or real bank statements to GitHub.** Use anonymized sample data for demos.
-
-## Possible future improvements
-- Date filters and custom categories
-- Recurring expense detection
-- Forecast evaluation and richer insights
-- Automated tests and deployment
+## Limitations and privacy
+- Categories are assigned using keyword-based rules; some records may fall into “Other.”
+- Forecasts are simple baselines and may be unreliable with limited history; they are not financial advice.
+- Budget status reflects the latest month in the uploaded data.
+- Use anonymized sample statements for demos. **Never upload real bank statements, passwords, app passwords, or API keys to a public repository.**
