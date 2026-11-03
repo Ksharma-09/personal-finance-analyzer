@@ -50,3 +50,7 @@ GitHub Actions runs the pytest suite, compiles Python files, checks Streamlit im
 - Forecasts are simple baselines and may be unreliable with limited history; they are not financial advice.
 - Budget status reflects the latest month in the uploaded data.
 - Use anonymized sample statements for demos. **Never upload real bank statements, passwords, app passwords, or API keys to a public repository.**
+
+
+## Live demo
+🚀 **Try the deployed app:** https://personal-finance-analyzer-mqr7dzgw2nhmr4xmoccspp.streamlit.app/
