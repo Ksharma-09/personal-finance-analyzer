@@ -42,8 +42,16 @@ def normalize_columns(data):
     if missing:
         raise ValueError("Missing required columns: " + ", ".join(missing))
     data["date"] = pd.to_datetime(data["date"], errors="coerce", dayfirst=True)
-    data["debit"] = pd.to_numeric(data["debit"], errors="coerce").fillna(0).clip(lower=0)
-    data["credit"] = pd.to_numeric(data["credit"], errors="coerce").fillna(0).clip(lower=0)
+    data["debit"] = pd.to_numeric(data["debit"], errors="coerce").fillna(0)
+    data["credit"] = pd.to_numeric(data["credit"], errors="coerce").fillna(0)
+    # Bank exports may encode refunds/reversals as negative values.
+    # Convert them to the opposite transaction type rather than discarding them.
+    negative_debit = data["debit"] < 0
+    data.loc[negative_debit, "credit"] += data.loc[negative_debit, "debit"].abs()
+    data.loc[negative_debit, "debit"] = 0
+    negative_credit = data["credit"] < 0
+    data.loc[negative_credit, "debit"] += data.loc[negative_credit, "credit"].abs()
+    data.loc[negative_credit, "credit"] = 0
     data = data.dropna(subset=["date"])
     if "description" not in data:
         data["description"] = "Uncategorized"
@@ -97,6 +105,9 @@ if isinstance(date_range, (tuple, list)) and len(date_range) == 2:
 elif isinstance(date_range, (tuple, list)) and len(date_range) == 1:
     selected_date = date_range[0]
     filtered = df[df["date"].dt.date == selected_date]
+elif hasattr(date_range, "year") and hasattr(date_range, "month") and hasattr(date_range, "day"):
+    # Streamlit may return a single date when the user selects one day in range mode.
+    filtered = df[df["date"].dt.date == date_range]
 else:
     filtered = df.copy()
 # Category selection should filter expenses, not remove income transactions.
