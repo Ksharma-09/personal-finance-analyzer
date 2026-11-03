@@ -189,6 +189,24 @@ if len(monthly_series) >= 3:
         next_period = monthly_series.index[-1] + pd.offsets.MonthBegin(1)
         st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
         st.caption("Estimate uses the median of recent non-zero expense months; irregular spending may make it inaccurate. Not financial advice.")
+        # Rolling-origin evaluation of the simple monthly median baseline.
+        eval_values = monthly_series.dropna()
+        if len(eval_values) >= 5:
+            errors = []
+            first_test = max(3, len(eval_values) - min(6, len(eval_values) - 3))
+            for idx in range(first_test, len(eval_values)):
+                history = eval_values.iloc[:idx].tail(6)
+                if len(history) >= 3:
+                    actual = float(eval_values.iloc[idx])
+                    prior_positive = history[history > 0]
+                    prediction = float(prior_positive.median()) if not prior_positive.empty else float(history.median())
+                    errors.append((actual, prediction))
+            if errors:
+                actuals = np.array([pair[0] for pair in errors], dtype=float)
+                predictions = np.array([pair[1] for pair in errors], dtype=float)
+                mae = float(np.mean(np.abs(actuals - predictions)))
+                st.metric("Historical baseline MAE", f"₹{mae:,.2f}")
+                st.caption(f"Rolling evaluation across {len(errors)} past month(s); this evaluates the simple median baseline, not guaranteed future accuracy.")
     else:
         st.info("No positive expenses in the latest 6 calendar months to estimate from")
 else:
