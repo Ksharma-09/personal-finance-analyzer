@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -166,13 +165,16 @@ with c2:
 st.subheader("Next-Month Expense Estimate")
 monthly_series = filtered.set_index("date").resample("MS")["debit"].sum()
 if len(monthly_series) >= 3:
-    x = np.arange(len(monthly_series)).reshape(-1, 1)
-    y = monthly_series.to_numpy(dtype=float)
-    model = LinearRegression().fit(x, y)
-    estimate = max(0.0, float(model.predict(np.array([[len(monthly_series)]]))[0]))
-    next_period = monthly_series.index[-1] + pd.offsets.MonthBegin(1)
-    st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
-    st.caption("Baseline linear trend only; it is not financial advice and may be inaccurate.")
+    # Robust baseline: median of positive expense months in the latest 6 calendar months.
+    recent = monthly_series.tail(6)
+    positive_months = recent[recent > 0]
+    if not positive_months.empty:
+        estimate = float(positive_months.median())
+        next_period = monthly_series.index[-1] + pd.offsets.MonthBegin(1)
+        st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
+        st.caption("Estimate uses the median of recent non-zero expense months; irregular spending may make it inaccurate. Not financial advice.")
+    else:
+        st.info("No positive expenses in the latest 6 calendar months to estimate from.")
 else:
     st.info("At least 3 calendar months of transactions are needed for this baseline estimate.")
 
