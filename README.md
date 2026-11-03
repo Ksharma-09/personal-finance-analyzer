@@ -1,6 +1,5 @@
 # Personal Finance Analyzer 💰
-
-An interactive **Streamlit** dashboard for analyzing bank-statement transactions, tracking income and expenses, understanding savings, and reviewing monthly spending patterns.
+A Python-based Personal Finance Analytics Dashboard built with Streamlit to track income, expenses, savings, and budgets. Features interactive data visualizations, spending pattern analysis, budget monitoring, monthly expense forecasting with historical evaluation, and CSV/PDF report generation for data-driven financial management.
 
 ## Features
 - Upload bank statements as **CSV, XLSX, or XLS**
