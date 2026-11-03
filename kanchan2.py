@@ -165,7 +165,7 @@ if len(monthly_series) >= 3:
     x = np.arange(len(monthly_series)).reshape(-1, 1)
     y = monthly_series.to_numpy(dtype=float)
     model = LinearRegression().fit(x, y)
-    estimate = max(0.0, float(model.predict(np.array([[len(monthly_series)]]))[0]))
+    estimate = max(0.0, float(model.predict(np.array([[len(monthly_series)]])[0]))
     next_period = monthly_series.index[-1] + pd.offsets.MonthBegin(1)
     st.metric(f"Estimated expenses for {next_period.strftime('%B %Y')}", f"₹{estimate:,.2f}")
     st.caption("Baseline linear trend only; it is not financial advice and may be inaccurate.")
