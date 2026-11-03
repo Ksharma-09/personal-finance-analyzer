@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
+from kanchan import clean_transactions, categorize
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -22,58 +23,20 @@ def load_default_data():
     return pd.read_csv(path)
 
 def normalize_columns(data):
-    data = data.copy()
-    data.columns = [str(c).strip().lower() for c in data.columns]
-    aliases = {
-        "date": ("date", "transaction date", "trans_date"),
-        "description": ("description", "narration", "details", "transaction", "particulars"),
-        "debit": ("debit", "withdrawal", "expense", "expenses", "withdrawals"),
-        "credit": ("credit", "deposit", "income", "incomes", "deposits"),
-    }
-    rename = {}
-    for target, options in aliases.items():
-        for option in options:
-            if option in data.columns:
-                rename[option] = target
-                break
-    data = data.rename(columns=rename)
-    required = ["date", "debit", "credit"]
-    missing = [c for c in required if c not in data.columns]
-    if missing:
-        raise ValueError("Missing required columns: " + ", ".join(missing))
-    data["date"] = pd.to_datetime(data["date"], errors="coerce", dayfirst=True)
-    data["debit"] = pd.to_numeric(data["debit"], errors="coerce").fillna(0)
-    data["credit"] = pd.to_numeric(data["credit"], errors="coerce").fillna(0)
-    # Bank exports may encode refunds/reversals as negative values.
-    # Convert them to the opposite transaction type rather than discarding them.
-    negative_debit = data["debit"] < 0
-    data.loc[negative_debit, "credit"] += data.loc[negative_debit, "debit"].abs()
-    data.loc[negative_debit, "debit"] = 0
-    negative_credit = data["credit"] < 0
-    data.loc[negative_credit, "debit"] += data.loc[negative_credit, "credit"].abs()
-    data.loc[negative_credit, "credit"] = 0
-    data = data.dropna(subset=["date"])
-    if "description" not in data:
-        data["description"] = "Uncategorized"
-    data["description"] = data["description"].fillna("Uncategorized").astype(str).str.strip()
-    data.loc[data["description"] == "", "description"] = "Uncategorized"
-    data["month"] = data["date"].dt.to_period("M").astype(str)
-    return data
+    """Compatibility wrapper: use the shared cleaning pipeline in kanchan.py."""
+    return clean_transactions(data)
+
 
 def classify(description):
-    text = str(description).lower()
-    rules = {
-        "Shopping": ("amazon", "flipkart", "myntra", "shopping", "mall"),
-        "Food": ("zomato", "swiggy", "restaurant", "food", "cafe"),
-        "Travel": ("petrol", "fuel", "uber", "ola", "railway", "bus", "metro"),
-        "Bills": ("electricity", "recharge", "internet", "bill", "water"),
-        "Healthcare": ("pharmacy", "medical", "hospital", "clinic"),
-        "Education": ("course", "college", "school", "book", "tuition"),
+    """Map shared category labels to dashboard display labels."""
+    labels = {
+        "shopping": "Shopping",
+        "food": "Food",
+        "travel": "Travel",
+        "bills": "Bills",
+        "other": "Other",
     }
-    for category, keywords in rules.items():
-        if any(word in text for word in keywords):
-            return category
-    return "Other"
+    return labels.get(categorize(description), "Other")
 
 uploaded = st.file_uploader("Upload bank statement", type=["csv", "xlsx", "xls"])
 df = None
