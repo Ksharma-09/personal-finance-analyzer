@@ -1,93 +1,134 @@
+"""Reusable data-cleaning and analysis helpers for Personal Finance Analyzer."""
+from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
-os.makedirs("project",exist_ok=True)
-df=pd.read_csv("student.csv")
-print(df)
-df.fillna(0,inplace=True)
-df["Date"]=pd.to_datetime(df["Date"])
-print(df.head())
-def categorize(desc):
-    desc=desc.lower()
-    if "amazon" in desc:
-        return"shopping"
-    elif "zomato" in desc:
-        return"food"
-    elif "petrol" in desc:
-        return"travel"
+
+PROJECT_DIR = Path("project")
+
+
+def clean_transactions(data):
+    """Validate and clean a DataFrame containing Date, Debit, Credit."""
+    data = data.copy()
+    data.columns = [str(c).strip().lower() for c in data.columns]
+    aliases = {
+        "date": ("date", "transaction date", "trans_date"),
+        "description": ("description", "narration", "details", "transaction"),
+        "debit": ("debit", "withdrawal", "expense", "expenses"),
+        "credit": ("credit", "deposit", "income", "incomes"),
+    }
+    rename = {}
+    for target, candidates in aliases.items():
+        for candidate in candidates:
+            if candidate in data.columns:
+                rename[candidate] = target
+                break
+    data = data.rename(columns=rename)
+    missing = {"date", "debit", "credit"} - set(data.columns)
+    if missing:
+        raise ValueError("Missing required columns: " + ", ".join(sorted(missing)))
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["debit"] = pd.to_numeric(data["debit"], errors="coerce").fillna(0)
+    data["credit"] = pd.to_numeric(data["credit"], errors="coerce").fillna(0)
+    data = data.dropna(subset=["date"])
+    if "description" not in data:
+        data["description"] = "Uncategorized"
+    data["description"] = data["description"].fillna("Uncategorized").astype(str)
+    data["month"] = data["date"].dt.to_period("M").astype(str)
+    return data
+
+
+def load_transactions(file_or_path):
+    """Load CSV or Excel bank statement and clean it."""
+    name = str(getattr(file_or_path, "name", file_or_path)).lower()
+    if name.endswith(".csv"):
+        data = pd.read_csv(file_or_path)
+    elif name.endswith((".xlsx", ".xls")):
+        data = pd.read_excel(file_or_path)
     else:
-        return"other" 
-df["categorize"]=df["description"].apply(categorize)
-monthly=df.groupby(df["Date"].dt.month)["debit"].sum()
-plt.figure(figsize=(6,3))
-monthly.plot(kind="bar")
-plt.title("monthly Expenses")
-plt.tight_layout()
-plt.savefig("project/monthly_expense.png")
-plt.show()
-income=df.groupby(df["Date"].dt.month)["credit"].sum()
-expens=df.groupby(df["Date"].dt.month)["debit"].sum()
-months=income.index
-plt.figure(figsize=(6,3))
-plt.bar(months,income,alpha=0.5)
-plt.bar(months,expens,alpha=0.5)
-plt.title("income vs expense")
-plt.xlabel("month")
-plt.ylabel("Amount")
-plt.legend()
-plt.tight_layout()
-plt.savefig("project/ income vs expense.png")
-plt.show()
-savings=income-expens
-plt.figure(figsize=(4,4))
-plt.bar(savings.index,savings)
-plt.title("monthly savings")
-plt.xlabel("month")
-plt.ylabel("savings")
-plt.tight_layout()
-plt.savefig("project/monthly_saving.png")
-plt.show()
+        raise ValueError("Supported file formats: CSV, XLSX, XLS")
+    return clean_transactions(data)
 
 
-Category_expens=df.groupby("categorize")["debit"].sum()
-df.groupby("categorize")["debit"].sum()
-fig_category_expens=plt.figure(figsize=(4,4))
-plt.pie(Category_expens,labels=Category_expens.index,autopct="%1.1f%%")
-plt.title("expense by category")
-plt.tight_layout()
-plt.savefig("project/expens_category.png")
-plt.show()
-total_income = df["credit"].sum()
-total_expens = df["debit"].sum()
-savings=total_income-total_expens
-print("INCOME",total_income)
-print("TOTAL EXPENSE",total_expens)
-print("SAVING",savings)
-fig_monthly=plt.figure(figsize=(4,4))
-plt.bar(monthly.index,monthly.values)
-plt.title("monthly expense")
-fig_income_expense=plt.figure()
-plt.bar(months,income,alpha=0.5)
-plt.bar(months,expens,alpha=0.5)
-plt.title("income vs expense")
-plt.legend(["income","expense"])
-
-monthly_income=df.groupby(df["Date"].dt.month)["credit"].sum()
-monthly_expens=df.groupby(df["Date"].dt.month)["debit"].sum()
-monthly_savings=monthly_income-monthly_expens
-fig_saving=plt.figure()
-plt.bar(monthly_savings.index,monthly_savings.values)
-plt.title("monthly saving")
+def categorize(description):
+    """Simple keyword-based category assignment."""
+    text = str(description).lower()
+    rules = {
+        "shopping": ("amazon", "flipkart", "myntra"),
+        "food": ("zomato", "swiggy", "restaurant", "food"),
+        "travel": ("petrol", "fuel", "uber", "ola", "railway"),
+        "bills": ("electricity", "recharge", "internet", "bill"),
+    }
+    for category, words in rules.items():
+        if any(word in text for word in words):
+            return category
+    return "other"
 
 
-from reportlab.platypus import SimpleDocTemplate,Paragraph,Image
-from reportlab.lib.styles import getSampleStyleSheet
-doc=SimpleDocTemplate("project/finance_report.pdf")
-Styles=getSampleStyleSheet()
-content=[
-    Paragraph(f"Total Income:{total_income}",Styles["Normal"]),
-    Paragraph(f"total expense:{total_expens}",Styles["Normal"]),
-    Paragraph(f"savings:{savings}",Styles["Normal"]),
+def summarize(data):
+    """Return cleaned transactions, totals, and monthly summary."""
+    df = clean_transactions(data)
+    income = float(df["credit"].sum())
+    expenses = float(df["debit"].sum())
+    monthly = df.groupby(df["date"].dt.to_period("M"))[["credit", "debit"]].sum()
+    monthly["savings"] = monthly["credit"] - monthly["debit"]
+    return {
+        "transactions": df,
+        "total_income": income,
+        "total_expenses": expenses,
+        "net_savings": income - expenses,
+        "monthly": monthly,
+    }
 
-]
-doc.build(content)
+
+def create_charts(data):
+    """Create figures without saving files or calling plt.show()."""
+    df = clean_transactions(data)
+    df["category"] = df["description"].apply(categorize)
+    monthly = df.groupby(df["date"].dt.to_period("M"))[["credit", "debit"]].sum()
+
+    figures = {}
+    figures["monthly"] = plt.subplots(figsize=(8, 4))[0]
+    ax = figures["monthly"].axes[0]
+    monthly["debit"].plot(kind="bar", ax=ax, title="Monthly Expenses")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Amount")
+    figures["monthly"].tight_layout()
+
+    figures["income_expense"], ax = plt.subplots(figsize=(8, 4))
+    monthly[["credit", "debit"]].plot(kind="bar", ax=ax, title="Income vs Expenses")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Amount")
+    ax.legend(["Income", "Expenses"])
+    figures["income_expense"].tight_layout()
+
+    figures["savings"], ax = plt.subplots(figsize=(8, 4))
+    (monthly["credit"] - monthly["debit"]).plot(kind="bar", ax=ax, title="Monthly Savings")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Amount")
+    figures["savings"].tight_layout()
+
+    figures["category_expense"], ax = plt.subplots(figsize=(6, 6))
+    category_totals = df.groupby("category")["debit"].sum()
+    if category_totals.sum() > 0:
+        ax.pie(category_totals, labels=category_totals.index, autopct="%1.1f%%")
+        ax.set_title("Expenses by Category")
+    else:
+        ax.text(0.5, 0.5, "No expense data", ha="center", va="center")
+        ax.axis("off")
+    figures["category_expense"].tight_layout()
+    return figures
+
+
+if __name__ == "__main__":
+    PROJECT_DIR.mkdir(exist_ok=True)
+    sample = Path("student.csv")
+    if not sample.exists():
+        raise SystemExit("student.csv not found. Use load_transactions() with your own CSV/Excel file.")
+    data = load_transactions(sample)
+    result = summarize(data)
+    print(f"Income: {result['total_income']:,.2f}")
+    print(f"Expenses: {result['total_expenses']:,.2f}")
+    print(f"Net savings: {result['net_savings']:,.2f}")
+    for name, fig in create_charts(data).items():
+        fig.savefig(PROJECT_DIR / f"{name}.png", dpi=150, bbox_inches="tight")
+    print("Charts saved in project/")
