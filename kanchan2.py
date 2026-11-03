@@ -16,7 +16,7 @@ st.caption("Understand your income, expenses, savings, and monthly spending patt
 
 @st.cache_data
 def load_default_data():
-    path = Path("student.csv")
+    path = Path(__file__).resolve().parent / "student.csv"
     if not path.exists():
         raise FileNotFoundError("student.csv was not found. Upload a CSV or Excel bank statement.")
     return pd.read_csv(path)
@@ -86,10 +86,12 @@ try:
 except Exception as exc:
     st.error(f"Unable to load data: {exc}")
     st.stop()
+    raise RuntimeError(f"Unable to load data: {exc}")
 
 if df is None:
     st.error("Data could not be initialized. Please upload a valid CSV or Excel file.")
     st.stop()
+    raise RuntimeError("Data could not be initialized.")
 
 if df.empty:
     st.warning("The file has no valid dated transactions.")
