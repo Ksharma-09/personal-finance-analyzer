@@ -160,31 +160,57 @@ with left:
         st.info("Review discretionary spending to potentially increase savings.")
 with right:
     st.subheader("Monthly Income vs Expenses")
-    st.line_chart(monthly[["credit", "debit"]].rename(columns={"credit": "Income", "debit": "Expenses"}))
+    fig, ax = plt.subplots(figsize=(9, 3.8), facecolor="#0e1117")
+    ax.set_facecolor("#0e1117")
+    monthly[["credit", "debit"]].rename(columns={"credit": "Income", "debit": "Expenses"}).plot(
+        kind="bar", ax=ax, width=0.78, color=["#48A9E6", "#F39C4A"]
+    )
+    ax.set_xlabel("Month", color="#d6d6d6")
+    ax.set_ylabel("Amount (₹)", color="#d6d6d6")
+    ax.tick_params(axis="x", rotation=35, labelsize=8, colors="#d6d6d6")
+    ax.tick_params(axis="y", colors="#d6d6d6")
+    ax.grid(axis="y", alpha=0.2)
+    ax.legend(loc="upper right", facecolor="#20242c", labelcolor="#f2f2f2")
+    for spine in ax.spines.values():
+        spine.set_color("#444a55")
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
-c1, c2 = st.columns(2)
+c1, c2 = st.columns([1, 1])
 with c1:
     st.subheader("Monthly Expenses")
-    st.bar_chart(monthly["debit"])
+    fig, ax = plt.subplots(figsize=(7, 3.6), facecolor="#0e1117")
+    ax.set_facecolor("#0e1117")
+    monthly["debit"].plot(kind="bar", ax=ax, color="#69BDF8", width=0.72)
+    ax.set_xlabel("Month", color="#d6d6d6")
+    ax.set_ylabel("Expenses (₹)", color="#d6d6d6")
+    ax.tick_params(axis="x", rotation=35, labelsize=8, colors="#d6d6d6")
+    ax.tick_params(axis="y", colors="#d6d6d6")
+    ax.grid(axis="y", alpha=0.2)
+    for spine in ax.spines.values():
+        spine.set_color("#444a55")
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 with c2:
     st.subheader("Expenses by Category")
     category_totals = filtered.groupby("category")["debit"].sum().sort_values(ascending=False)
     category_totals = category_totals[category_totals > 0]
     if not category_totals.empty:
-        # Match the dark Streamlit dashboard instead of Matplotlib's white canvas.
-        fig, ax = plt.subplots(figsize=(6, 4), facecolor="#0e1117")
+        fig, ax = plt.subplots(figsize=(6, 3.6), facecolor="#0e1117")
         ax.set_facecolor("#0e1117")
-        wedges, texts, autotexts = ax.pie(
-            category_totals,
-            labels=category_totals.index,
-            autopct="%1.1f%%",
-            textprops={"color": "#f2f2f2", "fontsize": 10},
-            wedgeprops={"edgecolor": "#0e1117", "linewidth": 1.2},
+        wedges, _, autotexts = ax.pie(
+            category_totals, labels=None, autopct="%1.1f%%", startangle=90,
+            pctdistance=0.68, textprops={"fontsize": 9, "color": "#ffffff"},
+            wedgeprops={"edgecolor": "#0e1117", "linewidth": 1.2}
         )
-        for autotext in autotexts:
-            autotext.set_color("#ffffff")
-            autotext.set_fontweight("bold")
-        ax.set_title("Expense distribution", color="#f2f2f2", pad=12)
+        ax.legend(wedges, category_totals.index, title="Category",
+                 loc="center left", bbox_to_anchor=(1, 0.02, 0.4, 0.96),
+                 fontsize=8, title_fontsize=9, facecolor="#20242c", labelcolor="#f2f2f2")
+        ax.set_title("Expense distribution", color="#f2f2f2", fontsize=11)
+        ax.axis("equal")
+        fig.tight_layout()
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
     else:
