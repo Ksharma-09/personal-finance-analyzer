@@ -97,7 +97,8 @@ if isinstance(date_range, (tuple, list)) and len(date_range) == 2:
     filtered = df[(df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)]
 else:
     filtered = df.copy()
-filtered = filtered[filtered["category"].isin(selected_categories)]
+# Category selection should filter expenses, not remove income transactions.
+filtered = filtered[(filtered["credit"] > 0) | (filtered["category"].isin(selected_categories))]
 if filtered.empty:
     st.warning("No transactions match these filters. Adjust the date range or categories.")
     st.stop()
